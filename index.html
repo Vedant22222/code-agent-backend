@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Code Agent</title>
+    
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Highlight.js for VS Code style syntax coloring -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-300 font-sans min-h-screen flex flex-col items-center p-6">
+
+    <div class="w-full max-w-4xl mt-10">
+        <!-- Header -->
+        <div class="mb-8 border-b border-slate-800 pb-4">
+            <h1 class="text-4xl font-bold text-white tracking-tight">Self-Healing Code Agent</h1>
+            <p class="text-slate-400 mt-2 text-sm">Autonomous Python generation, remote execution, and automatic error resolution.</p>
+        </div>
+
+        <!-- Input Section -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-2xl mb-8">
+            <label class="block text-sm font-medium text-slate-400 mb-2">Define your problem:</label>
+            <textarea id="promptInput" 
+                class="w-full h-32 bg-slate-950 border border-slate-700 rounded-lg p-4 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+                placeholder="e.g., Write a class for a basic calculator that adds, subtracts, multiplies, and divides..."></textarea>
+            
+            <div class="mt-4 flex justify-between items-center">
+                <span id="statusText" class="text-sm text-amber-500 font-mono hidden">Agent is thinking and testing...</span>
+                <button id="generateBtn" onclick="generateCode()" 
+                    class="ml-auto bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg transition shadow-lg shadow-blue-600/20">
+                    Deploy Agent
+                </button>
+            </div>
+        </div>
+
+        <!-- Output Section (Hidden by default) -->
+        <div id="outputContainer" class="hidden space-y-6">
+            
+            <!-- Code Block -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
+                <div class="bg-slate-950 px-4 py-2 border-b border-slate-800 flex items-center">
+                    <span class="text-xs font-mono text-slate-500">verified_script.py</span>
+                </div>
+                <pre class="m-0 p-4"><code id="codeArea" class="language-python text-sm"></code></pre>
+            </div>
+
+            <!-- Terminal Block -->
+            <div class="bg-black border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
+                <div class="bg-slate-900 px-4 py-2 border-b border-slate-800 flex items-center">
+                    <span class="text-xs font-mono text-green-500">Terminal Output</span>
+                </div>
+                <pre class="m-0 p-4 text-green-400 font-mono text-sm overflow-x-auto"><code id="terminalArea"></code></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function generateCode() {
+            const prompt = document.getElementById('promptInput').value;
+            const statusText = document.getElementById('statusText');
+            const generateBtn = document.getElementById('generateBtn');
+            const outputContainer = document.getElementById('outputContainer');
+            const codeArea = document.getElementById('codeArea');
+            const terminalArea = document.getElementById('terminalArea');
+
+            if (!prompt) return alert("You must provide a prompt.");
+
+            // UI Loading State
+            statusText.classList.remove('hidden');
+            statusText.innerText = "Agent is thinking, writing, and testing code...";
+            generateBtn.disabled = true;
+            generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            outputContainer.classList.add('hidden');
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusText.innerText = `Success! Verified in ${data.attempts} attempt(s).`;
+                    statusText.classList.replace('text-amber-500', 'text-green-500');
+                    
+                    // Inject data
+                    codeArea.textContent = data.code;
+                    terminalArea.textContent = data.output;
+                    
+                    // Trigger syntax highlighting
+                    hljs.highlightElement(codeArea);
+                    
+                    outputContainer.classList.remove('hidden');
+                } else {
+                    statusText.innerText = "Agent failed to heal the code.";
+                    statusText.classList.replace('text-amber-500', 'text-red-500');
+                    terminalArea.textContent = `CRITICAL ERROR: ${data.detail}`;
+                    codeArea.textContent = "# Failed to generate executable code.";
+                    outputContainer.classList.remove('hidden');
+                }
+            } catch (error) {
+                statusText.innerText = "Network failure.";
+                statusText.classList.replace('text-amber-500', 'text-red-500');
+                terminalArea.textContent = `Could not connect to FastAPI. Is the backend running? \n\n${error.message}`;
+                outputContainer.classList.remove('hidden');
+            } finally {
+                // Reset UI Button
+                generateBtn.disabled = false;
+                generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+    </script>
+<!-- Developer Watermark -->
+    <div class="fixed bottom-4 right-4 text-xs font-mono text-slate-600 select-none opacity-50 hover:opacity-100 transition-opacity z-50">
+        Built by Vedant Joshi
+    </div>
+</body>
+</html>
